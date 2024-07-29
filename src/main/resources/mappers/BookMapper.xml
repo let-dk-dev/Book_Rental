@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dk.board_book.domain.book.BookMapper">
+
+        <!-- table book의,,전체 컬럼 -->
+        <sql id="bookColumns">
+            book_id
+            , isbn
+            , book_name
+            , cover_file
+            , writer
+            , pb_comp
+            , pb_date
+            , price
+            , rental_availableyn
+            , cr_date
+            , cr_memberid
+            , md_date
+            , md_memberid
+        </sql>
+
+        <!-- table book에서 insert 시,,사용할 컬럼 -->
+        <sql id="bookInsertColumns">
+            book_id
+            , isbn
+            , book_name
+            , cover_file
+            , writer
+            , pb_comp
+            , pb_date
+            , price
+            , cr_date
+            , cr_memberid
+            , md_date
+            , md_memberid
+        </sql>
+
+        <sql id="rentColumns">
+            rental_no
+          , mb_id
+          , bk_id
+          , rental_date
+          , return_date
+        </sql>
+
+        <!-- 도서 검색 -->
+        <sql id="search">
+            <!-- 검색 키워드가 있을 때 -->
+            <if test="keyword != null and keyword != ''">
+                <choose>
+                    <!-- 검색 유형이 있을 때 -->
+                    <when test="searchType != null and searchType != ''">
+                        <choose>
+                            <when test="'isbn'.equals( searchType )">
+                                AND b.isbn LIKE CONCAT('%', #{keyword}, '%')
+                            </when>
+                            <when test="'bookName'.equals( searchType )">
+                                AND b.book_name LIKE CONCAT('%', #{keyword}, '%')
+                            </when>
+                            <when test="'memberName'.equals( searchType )">
+                                AND m.name LIKE CONCAT('%', #{keyword}, '%')
+                            </when>
+                        </choose>
+                    </when>
+
+                    <!-- 전체 검색일 때 -->
+                    <otherwise>
+                        AND (
+                            b.isbn LIKE CONCAT('%', #{keyword}, '%')
+                            OR b.book_name LIKE CONCAT('%', #{keyword}, '%')
+                            OR m.name LIKE CONCAT('%', #{keyword}, '%')
+                        )
+                    </otherwise>
+                </choose>
+            </if>
+        </sql>
+
+        <!-- 도서 저장 -->
+        <insert id="save" parameterType="com.dk.board_book.domain.book.BookRequest" useGeneratedKeys="true" keyProperty="bookId">
+            INSERT INTO book (
+                <include refid="bookColumns" />
+            ) VALUES (
+                 #{bookId}
+                , #{isbn}
+                , #{bookName}
+                , #{coverFile}
+                , #{writer}
+                , #{pbComp}
+                , #{pbDate}
+                , #{price}
+                , 'Y'
+                , NOW()
+                , #{crMemberId}
+                , NOW()
+                , #{mdMemberId}
+            )
+        </insert>
+
+        <!-- 도서정보 상세 조회 -->
+        <select id="findById" parameterType="long" resultType="com.dk.board_book.domain.book.BookResponse">
+            SELECT
+                <include refid="bookColumns" />
+                , b.name as cr_member_name
+                , c.name as md_member_name
+            FROM
+                book a
+            LEFT JOIN member b
+                on a.cr_memberid = b.mb_id
+            LEFT JOIN member c
+                on a.md_memberid = c.mb_id
+            WHERE
+                book_id = #{value}
+        </select>
+
+        <!-- 도서 수정 -->
+        <update id="update" parameterType="com.dk.board_book.domain.book.BookRequest">
+            UPDATE book
+            SET
+                md_date = NOW()
+                , isbn = #{isbn}
+                , book_name = #{bookName}
+                , cover_file = #{coverFile}
+                , writer = #{writer}
+                , pb_comp = #{pbComp}
+                , pb_date = #{pbDate}
+                , price = #{price}
+            WHERE
+                book_id = #{bookId}
+        </update>
+
+        <!-- 도서 삭제 -->
+        <delete id="deleteById" parameterType="long">
+            DELETE from book
+            WHERE
+                book_id = #{bookId}
+        </delete>
+
+        <!-- 전체 도서 리스트 조회 -->
+        <select id="findAll" parameterType="com.dk.board_book.common.dto.SearchDto" resultType="com.dk.board_book.domain.book.BookResponse">
+            SELECT
+                <include refid="bookColumns" />
+            FROM
+                book b
+            WHERE
+                1 = 1
+                <include refid="search" />
+            ORDER BY
+                book_id DESC
+            LIMIT #{pagination.limitStart}, #{recordSize}
+        </select>
+
+        <select id="findAllRentedBooks" parameterType="com.dk.board_book.common.dto.SearchDto" resultType="com.dk.board_book.domain.rent.RentResponse">
+            SELECT
+                a.rental_no
+               , a.mb_id
+               , m.name as member_name
+               , a.bk_id
+               , b.book_name
+               , b.cover_file
+               , b.isbn
+               , a.rental_date
+               , a.return_date
+            FROM
+                rental a
+            left join book b
+              on a.bk_id = b.book_id
+            left join member m
+              on a.mb_id = m.mb_id
+            WHERE
+                1=1
+                <include refid="search" />
+            ORDER BY
+                a.rental_date DESC
+            LIMIT #{pagination.limitStart}, #{recordSize}
+        </select>
+
+        <!-- 전체 도서 수 카운팅 -->
+        <select id="count" parameterType="com.dk.board_book.common.dto.SearchDto" resultType="int">
+            SELECT
+                COUNT(*)
+            FROM
+                book b
+            WHERE
+                1 = 1
+                <include refid="search" />
+        </select>
+
+        <!-- 전체 대여 중인 도서 수 카운팅 -->
+        <select id="countRentedBooks" parameterType="com.dk.board_book.common.dto.SearchDto" resultType="int">
+            /* countRentedBooks */
+            SELECT
+                COUNT(*)
+            FROM
+                rental r
+            left JOIN member m
+                on r.mb_id = m.mb_id
+            left join book b
+                on r.bk_id = b.book_id
+            WHERE
+                1=1
+                <include refid="search" />
+        </select>
+
+        <!-- 도서 대여 -->
+        <insert id="rent" parameterType="com.dk.board_book.domain.rent.RentRequest" useGeneratedKeys="true" keyProperty="rentalNo" >
+            INSERT INTO rental
+            (
+                  mb_id
+                , bk_id
+                , rental_date
+            )
+            VALUES(#{mbId}, #{bkId}, current_timestamp());
+        </insert>
+
+
+        <!-- 도서가 대여가능한지 체크 -->
+        <select id="isRentAble" parameterType="com.dk.board_book.domain.book.BookRequest" resultType="boolean">
+            SELECT
+                CASE WHEN rental_availableyn = 'Y'
+                 THEN TRUE
+                 ELSE FALSE
+                END AS is_available
+            FROM book
+            WHERE book_id = #{bookId}
+        </select>
+
+        <!-- 해당 user의 대여 도서 권수 카운팅 -->
+        <select id="countRent" parameterType="com.dk.board_book.domain.rent.RentRequest" resultType="int">
+            /* countRent */
+            SELECT
+                COUNT(*)
+            FROM
+                rental
+            WHERE
+                1=1
+                AND mb_id = #{mbId}
+                AND return_date IS NULL
+        </select>
+
+        <!-- 도서의 대여가능여부를 ==>> 불가로 변경 -->
+        <update id="setRentalAvailableN" parameterType="com.dk.board_book.domain.book.BookRequest">
+            UPDATE book
+            SET
+                  rental_availableyn = 'N'
+            WHERE
+                book_id = #{bookId}
+        </update>
+
+        <!-- 도서의 대여가능여부를 ==>> 가능으로 변경 -->
+        <update id="setRentalAvailableY" parameterType="com.dk.board_book.domain.book.BookRequest">
+            UPDATE book
+            SET
+                  rental_availableyn = 'Y'
+            WHERE
+                book_id = #{bookId}
+        </update>
+
+        <!-- 해당 유저가 대여 중인 도서리스트 -->
+        <select id="findRentedBooksByUserId" parameterType="long" resultType="com.dk.board_book.domain.rent.RentResponse">
+            SELECT
+                    r.bk_id
+                  , r.mb_id
+                  , r.rental_date
+                  , r.return_date
+              FROM rental r
+              JOIN book b
+                ON b.book_id = r.bk_id
+            WHERE r.mb_id = #{memberId}
+               AND r.return_date IS NULL
+        </select>
+
+        <!-- 반납 처리하는 역할 -->
+        <!-- table 명 소문자 rental로 수정해야 함!! -->
+        <update id="returnBookToday" parameterType="com.dk.board_book.domain.rent.RentRequest">
+        UPDATE rental  <!-- tts -->
+         SET return_date = NOW()
+        WHERE mb_id = #{mbId}
+         AND bk_id = #{bkId}
+        </update>
+</mapper>

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="layout/basic">
+
+   <th:block layout:fragment="title">
+       <title>도서등록</title>
+    </th:block>
+
+    <th:block layout:fragment="content">
+        <div class="page_tits">
+            <h3>도서 등록</h3>
+            <p class="path"><strong>현재 위치 :</strong> <span>도서 관리</span>  <span>도서 등록</span></p>
+        </div>
+
+        <div class="content">
+            <section>
+                <form id="saveForm" method="post" autocomplete="off" enctype="multipart/form-data">
+
+                    <!--/* 도서 수정인 경우, 서버로 전달할 도서 번호 (PK) */-->
+                    <input type="hidden" id="bookId" name="bookId" th:if="${book != null}" th:value="${book.bookId}" />
+
+                    <!--/* 삭제 처리할 파일 번호 */-->
+                    <input type="hidden" id="removeFileIds" name="removeFileIds" />
+
+                    <table class="tb tb_row">
+                        <colgroup>
+                            <col style="width:15%;" /><col style="width:35%;" /><col style="width:15%;" /><col style="width:35%;" />
+                        </colgroup>
+
+                        <tbody>
+                            <tr>
+                                <th>ISBN <span class="es">필수 입력</span></th>
+
+                                <td colspan="2"><input type="text" id="isbn" name="isbn" maxlength="50" placeholder="3글자-2글자-4글자-3글자-1글자" /></td>
+
+                                <!-- 썸네일 미리보기 영역 -->
+                                <td rowspan="7">
+                                     <!-- 썸네일 미리보기 영역 -->
+                                    <div id="thumbnailPreviewContainer" >
+                                        <img th:if="${book != null and book.coverFile != null}" class="middleThumbnail" id="middleThumbnail"  th:src="@{/uploads/{filename}(filename=${book.coverFile})}" alt="Thumbnail" />
+                                        <!-- 여기도 운영체제에 따라서 다르게 수정해야함-->
+                                    </div>
+
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th>제목 <span class="es">필수 입력</span></th>
+
+                                <td colspan="2"><input type="text" id="bookName" name="bookName" maxlength="50" placeholder="제목을 입력해 주세요." /></td>
+                            </tr>
+
+                            <tr>
+                                <th>저자</th>
+
+                                <td colspan="2"><input type="text" id="writer" name="writer" maxlength="10" placeholder="저자를 입력해 주세요." /></td>
+                            </tr>
+
+                            <tr>
+                              <th>가격</th>
+                              <td colspan="2"><input type="text" id="price" name="price" maxlength="10" placeholder="가격(원)을 입력해 주세요." /></td>
+                            </tr>
+
+                            <tr>
+                                <th>출판사</th>
+
+                                <td colspan="2"><input id="pbComp" name="pbComp" placeholder="출판사를 입력해 주세요."></td>
+                            </tr>
+                            <tr>
+                                <th>출판일</th>
+                                <td colspan="3"><input id="pbDate" name="pbDate" placeholder="예) 2024-12-25"></td>
+                            </tr>
+
+                            <tr>
+                                <th>썸네일</th>
+
+                                <td colspan="2">
+                                    <div id="bookData" ></div>
+                                    <div class="file_list">
+                                        <div>
+                                            <div class="file_input">
+
+                                                <input type="text" readonly />
+
+                                                <label> 첨부파일
+                                                    <input type="file" id="files" name="files" onchange="selectFile(this);" />
+<!--                                                    <input type="file" id="files" name="files" onchange="updateThumbnailPreview(this, 'thumbnailPreviewContainer');" />-->
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">등록일</th>
+                                <td><input type="text" id="crDate" name="crDate" readonly /></td>
+
+                                <th scope="row">등록자</th>
+                                <td><input type="text" id="crMemberName" name="crMemberName" readonly /></td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row">수정일</th>
+                                <td><input type="text" id="mdDate" name="mdDate" readonly /></td>
+
+                                <th scope="row">수정자</th>
+                                <td><input type="text" id="mdMemberName" name="mdMemberName" readonly /></td>
+
+                            </tr>
+                        </tbody>
+                    </table>
+                </form>
+
+                <p class="btn_set">
+                    <button type="button" id="saveBtn" onclick="saveBook();" class="btns btn_st3 btn_mid">저장</button>
+
+                    <button type="button" onclick="goListPage();" class="btns btn_bdr3 btn_mid">뒤로</button>
+                </p>
+            </section>
+        </div> <!--/* .content */-->
+    </th:block>
+<!--    =========================================================================-->
+
+    <th:block layout:fragment="script">
+        <script th:inline="javascript">
+
+        /*<![CDATA[*/
+
+            window.onload = () => { // (1)
+
+                renderBookInfo();
+
+                //findAllFile();
+            }
+
+            // 파일 삭제 처리용 익명 함수
+            const removeFileId = (function() { // (2)
+
+                const ids = [];
+
+                return {
+
+                    add(bookId) {
+                        if (ids.includes(bookId)) {
+
+                            return false;
+                        }
+
+                        ids.push(bookId);
+                    },
+
+                    getAll() {
+                        return ids;
+                    }
+                }
+            }());
+
+            // 전체 파일 조회
+            function findAllFile() {
+                console.log("findAllFile()");
+                // 1. 신규 등록/수정 체크
+                const book = [[ ${book}]];
+                console.log("book : "+book);
+
+                if ( !book ) {
+                    return false;
+                }
+
+                // 2. API 호출
+                const response = getJson(`/books/${book.bookId}/files`);
+                  /*
+                    주의) bookId로 수정할 것!!
+                  */
+
+                // 3. 로직 종료a
+                if ( !response.length ) {a
+                    return false;
+                }
+
+                // 4. 업로드 영역 추가
+                for (let i = 0, len = (response.length - 1); i < len; i++) {
+                    console.log("addFile()");
+                    addFile();
+                }
+
+                // 5. 파일 선택 & 삭제 이벤트 재선언 & 파일명 세팅
+                const filenameInputs = document.querySelectorAll('.file_list input[type="text"]');
+                console.log(filenameInputs);
+
+                filenameInputs.forEach((input, i) => {
+
+                    const fileInput = input.nextElementSibling.firstElementChild;
+                    const fileRemoveBtn = input.parentElement.nextElementSibling;
+
+                    fileInput.setAttribute('onchange', `selectFile(this, ${response[i].fileId})`);
+                    fileRemoveBtn.setAttribute('onclick', `removeFile(this, ${response[i].fileId})`);
+                    input.value = response[i].originalName;
+                })
+            }
+
+            // 도서정보 상세 page 렌더링
+            function renderBookInfo() { // (4)
+
+                const book = [[ ${book}]];
+
+                if (!book) {
+                    initCreatedDate();
+                    return false;
+                }
+
+                const form = document.getElementById('saveForm');
+
+                const fields = ['bookId', 'isbn', 'bookName', 'writer', 'pbComp', 'pbDate', 'price' , 'crMemberName', 'mdMemberName'];
+
+                // form.crDate.value = dayjs(book.crDate).format('YYYY-MM-DD HH:mm');
+                // form.mdDate.value = dayjs(book.mdDate).format('YYYY-MM-DD HH:mm');
+                form.crDate.value = dayjs(book.crDate).format('YYYY-MM-DD');
+                form.mdDate.value = dayjs(book.mdDate).format('YYYY-MM-DD');
+
+
+                fields.forEach(field => {
+
+                    form[field].value = book[field];
+                })
+            }
+
+            // 등록일 초기화
+            function initCreatedDate() {
+
+              document.getElementById('crDate').value = dayjs().format('YYYY-MM-DD');
+            }
+
+            // 도서 저장(수정)
+            function saveBook() {
+                console.log("도서저장(수정) 버튼 클릭");
+
+                const form = document.getElementById('saveForm');
+
+                const fields = [form.isbn, form.bookName];
+                console.log("fields : " +fields);
+
+                const fieldNames = ['ISBN', '제목'];
+
+                for (let i = 0, len = fields.length; i < len; i++) {
+
+                    isValid(fields[i], fieldNames[i]);
+                }
+
+                new URLSearchParams(location.search).forEach((value, key) => {
+
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = value;
+                    form.append(input);
+                })
+
+                document.getElementById('saveBtn').disabled = true;
+                form.removeFileIds.value = removeFileId.getAll().join(); // 추가
+
+                const bookData = document.getElementById('bookData');
+                bookData.dataset.book = `[[ ${book} ]]`;        //백틱을 줘야 보임. 안주면 HTML요소가 보임
+                console.log('book value:', bookData);
+
+                form.action = [[ ${book == null} ]] ? '/book/save' : '/book/update';
+                form.submit();
+            }
+
+            // 도서 리스트 페이지로 이동
+            function goListPage() {
+
+                const queryString = new URLSearchParams(location.search);
+
+                queryString.delete('bookid');
+
+                location.href = '/book/list' + '?' + queryString.toString();
+            }
+
+            // 파일 선택
+            function selectFile(element, fileId) {
+
+                const file = element.files[0];
+                const filename = element.closest('.file_input').firstElementChild;
+
+                // 1. 파일 선택 창에서 취소 버튼이 클릭된 경우
+                if ( !file ) {
+                    filename.value = '';
+                    return false;
+                }
+
+                // 2. 파일 크기가 10MB를 초과하는 경우
+                const fileSize = Math.floor(file.size / 1024 / 1024);
+
+                if (fileSize > 10) {
+                    alert('10MB 이하의 파일로 업로드해 주세요.');
+                    filename.value = '';
+                    element.value = '';
+                    return false;
+                }
+
+                // 3. 파일명 지정
+                filename.value = file.name;
+
+                // 4. 삭제할 파일 id 추가
+                if (fileId) {
+                    removeFileId.add(fileId);
+                }
+                updateThumbnailPreview( document.getElementById('files'), 'thumbnailPreviewContainer');
+            }
+
+
+             // 썸네일 미리보기 업데이트 함수
+            function updateThumbnailPreview(input, previewContainerId) {
+
+                var previewContainer = document.getElementById(previewContainerId);
+
+                if (input.files && input.files[0]) {        //인풋파일이 있는경우. 그런데 선택해서 여기왔을때는 아직 없는 상태네
+                    console.log("인풋파일이 있는경우");
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        previewContainer.innerHTML = '<img id="thumbNailImg" src="' + e.target.result + '">';
+                    };
+                    reader.readAsDataURL(input.files[0]);
+                }else{
+                    console.log("인풋파일이 없는경우");
+                }
+            }
+
+        /*]]>*/
+        </script>
+    </th:block>
+

@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dk.board_book.domain.review.ReviewMapper">
+
+    <!-- table review 전체 column -->
+     <sql id="reviewColumns">
+        review_id
+      , bk_id
+      , content
+      , writer
+      , delete_yn
+      , cr_date
+      , md_date
+      </sql>
+
+      <sql id="reviewColumns2">
+          a.review_id
+        , a.bk_id
+        , a.content
+        , a.writer
+        , a.delete_yn
+        , a.cr_date
+        , a.md_date
+      </sql>
+
+    <!-- 리뷰 저장 -->
+     <insert id="save" parameterType="com.dk.board_book.domain.review.ReviewRequest" useGeneratedKeys="true" keyProperty="reviewId">
+         INSERT INTO review (
+             <include refid="reviewColumns" />
+         ) VALUES (
+               #{reviewId}
+             , #{bkId}
+             , #{content}
+             , #{writer}
+             , 0
+             , NOW()
+             , NULL
+         )
+     </insert>
+
+    <!-- 리뷰 상세정보 조회 -->
+    <select id="findById" parameterType="long" resultType="com.dk.board_book.domain.review.ReviewResponse">
+        SELECT
+            <include refid="reviewColumns2" />
+          , b.name
+        FROM
+            review a
+        JOIN member b
+            ON a.writer = b.mb_id
+        WHERE
+            a.review_id = #{value}
+    </select>
+
+    <!-- 리뷰 수정 -->
+    <update id="update" parameterType="com.dk.board_book.domain.review.ReviewRequest">
+        UPDATE review
+        SET
+            md_date = NOW()
+            , content = #{content}
+            , writer = #{writer}
+        WHERE
+            review_id = #{reviewId}
+    </update>
+
+    <!-- 리뷰 삭제 -->
+    <delete id="deleteById" parameterType="long">
+        UPDATE review
+        SET
+            delete_yn = 1
+        WHERE
+            review_id = #{reviewId}
+    </delete>
+
+    <!-- 리뷰 리스트 조회 -->
+    <select id="findAll" parameterType="com.dk.board_book.domain.review.ReviewSearchDto" resultType="com.dk.board_book.domain.review.ReviewResponse">
+            SELECT
+                  <include refid="reviewColumns2" />
+                  , b.name
+            FROM
+                  review a
+            JOIN member b
+                  ON a.writer = b.mb_id
+            WHERE
+                  a.delete_yn = 0
+                  AND a.bk_id = #{bkId}
+            ORDER BY
+                  a.review_id DESC
+            LIMIT #{pagination.limitStart}, #{recordSize}
+    </select>
+
+    <!-- 리뷰 수 카운팅 -->
+    <select id="count" parameterType="com.dk.board_book.domain.review.ReviewSearchDto" resultType="int">
+            SELECT
+                COUNT(*)
+            FROM
+                review
+            WHERE
+                delete_yn = 0
+
+                AND bk_id = #{bkId}
+
+    </select>
+
+
+</mapper>

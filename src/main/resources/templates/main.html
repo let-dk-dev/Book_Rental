@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="layout/basic">
+
+    <!-- (title 영역) -->
+    <th:block layout:fragment="title">
+        <title>메인 화면</title>
+    </th:block>
+
+    <!-- (content 영역) -->
+    <th:block layout:fragment="content">
+        <div class="page_tits">
+            <h3>메인화면</h3>
+            <p class="path"><strong>현재 위치 :</strong> <span>Home</span> <span>메인화면</span> </p>
+        </div>
+
+        <div class="content">
+            <img id="mainBackGroundImg" th:src="@{/images/booklist.jpg}" alt="메인화면 북리스트">
+        </div>
+    </th:block>
+
+    <!-- (script 영역) -->
+    <th:block layout:fragment="script">
+        <script th:inline="javascript">
+        /*<![CDATA[*/
+
+        /*]]>*/
+        </script>
+    </th:block>
+</html>

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dk.board_book.domain.comment.CommentMapper">
+
+    <!-- comment 테이블 전체 컬럼 -->
+    <sql id="commentColumns">
+          re_id
+        , bd_id
+        , content
+        , writer
+        , delete_yn
+        , created_date
+        , modified_date
+    </sql>
+
+    <sql id="commentColumns2">
+        a.re_id
+      , a.bd_id
+      , a.content
+      , a.writer
+      , a.delete_yn
+      , a.created_date
+      , a.modified_date
+    </sql>
+
+
+    <!-- 댓글 저장 -->
+    <insert id="save" parameterType="com.dk.board_book.domain.comment.CommentRequest" useGeneratedKeys="true" keyProperty="reId">
+        INSERT INTO re_comment (
+            <include refid="commentColumns" />
+        ) VALUES (
+              #{reId}
+            , #{bdId}
+            , #{content}
+            , #{writer}
+            , 0
+            , NOW()
+            , NULL
+        )
+    </insert>
+
+
+    <!-- 댓글 상세정보 조회 -->
+    <select id="findById" parameterType="long" resultType="com.dk.board_book.domain.comment.CommentResponse">
+          SELECT
+             <include refid="commentColumns2" />
+            , b.name
+          FROM
+             re_comment a
+          JOIN member b
+             ON a.writer = b.mb_id
+          WHERE
+             a.re_id = #{value}
+      </select>
+
+
+    <!-- 댓글 수정 -->
+      <update id="update" parameterType="com.dk.board_book.domain.comment.CommentRequest">
+          UPDATE re_comment
+          SET
+                modified_date = NOW()
+              , content = #{content}
+              , writer = #{writer}
+          WHERE
+              re_id = #{reId}
+      </update>
+
+
+    <!-- 댓글 삭제 -->
+      <delete id="deleteById" parameterType="long">
+          UPDATE re_comment
+          SET
+              delete_yn = 1
+          WHERE
+              re_id = #{reId}
+      </delete>
+
+
+    <!-- 전체 댓글 리스트 조회 -->
+    <select id="findAll" parameterType="com.dk.board_book.domain.comment.CommentSearchDto" resultType="com.dk.board_book.domain.comment.CommentResponse">
+          SELECT
+              <include refid="commentColumns2" />
+            , b.name
+          FROM
+              re_comment a
+          JOIN member b
+            ON a.writer = b.mb_id
+          WHERE
+              a.delete_yn = 0
+              AND a.bd_id = #{bdId}
+          ORDER BY
+              a.re_id DESC
+          LIMIT #{pagination.limitStart}, #{recordSize}
+      </select>
+
+    <!-- 댓글 수 카운팅 -->
+    <select id="count" parameterType="com.dk.board_book.domain.comment.CommentSearchDto" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM
+            re_comment
+        WHERE
+            delete_yn = 0
+            AND bd_id = #{bdId}
+    </select>
+
+</mapper>

@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dk.board_book.domain.post.PostMapper">
+
+    <!-- table post의,,전체 컬럼 -->
+    <sql id="postColumns">
+            board_id,
+            title,
+            content,
+            writer_id,
+            view_cnt,
+            notice_yn,
+            delete_yn,
+            created_date,
+            modified_date
+    </sql>
+
+<!--    <sql id="postColumns2">-->
+<!--        a.board_id-->
+<!--      , a.title-->
+<!--      , a.content-->
+<!--      , a.writer-->
+<!--      , a.view_cnt-->
+<!--      , a.notice_yn-->
+<!--      , a.delete_yn-->
+<!--      , a.created_date-->
+<!--      , a.modified_date-->
+<!--    </sql>-->
+<!--    ====================================================================-->
+    <sql id="postColumns2">
+        a.board_id
+      , a.title
+      , a.content
+      , a.writer_id
+      , a.view_cnt
+      , a.notice_yn
+      , a.delete_yn
+      , a.created_date
+      , a.modified_date
+    </sql>
+
+    <!-- 게시글 저장 -->
+    <insert id="save" parameterType="com.dk.board_book.domain.post.PostRequest" useGeneratedKeys="true" keyProperty="boardId">
+        INSERT INTO board (
+            <include refid="postColumns" />
+        ) VALUES (
+                  #{boardId},
+                  #{title},
+                  #{content},
+                  #{writerId},
+                  0,
+                  #{noticeYn},
+                  0,
+                  NOW(),
+                  null
+        )
+    </insert>
+
+    <!-- 게시글 상세정보 조회 -->
+<!--    <select id="findById" parameterType="long" resultType="com.dk.board_book.domain.post.PostResponse">-->
+<!--        SELECT-->
+<!--            <include refid="postColumns2" />-->
+<!--           , a.writer as writerId-->
+<!--           , b.name as writerName-->
+<!--        FROM-->
+<!--            board a-->
+<!--        LEFT JOIN-->
+<!--            member b-->
+<!--          ON a.writer = b.mb_id-->
+<!--        WHERE-->
+<!--            a.board_id = #{value}-->
+<!--    </select>-->
+<!--    ====================================================================-->
+<select id="findById" parameterType="long" resultType="com.dk.board_book.domain.post.PostResponse">
+        SELECT
+            <include refid="postColumns2" />
+           , b.name as writerName
+        FROM
+            board a
+        LEFT JOIN
+            member b
+          ON a.writer_id = b.mb_id
+        WHERE
+            a.board_id = #{value}
+    </select>
+    <!-- 게시글 수정 -->
+    <update id="update" parameterType="com.dk.board_book.domain.post.PostRequest">
+
+        UPDATE board
+        SET title = #{title},
+            content = #{content},
+            writer_id = #{writerId},
+            notice_yn = #{noticeYn},
+            modified_date = now()
+        Where board_id = #{boardId}
+    </update>
+
+    <!-- 게시글 삭제 -->
+    <delete id="deleteById" parameterType="long">
+
+        UPDATE board
+        SET delete_yn = 1
+        WHERE board_id = #{boardId}
+
+    </delete>
+<!--    ==========================================================================-->
+
+    <!-- 게시글 검색 -->
+    <sql id="search">
+        <!-- 검색 키워드가 있을 때 -->
+        <if test="keyword != null and keyword != ''">
+            <choose>
+                <!-- 검색 유형이 있을 때 -->
+                <when test="searchType != null and searchType != ''">
+                    <choose>
+                        <when test="'title'.equals( searchType )">
+                            AND title LIKE CONCAT('%', #{keyword}, '%')
+                        </when>
+                        <when test="'content'.equals( searchType )">
+                            AND content LIKE CONCAT('%', #{keyword}, '%')
+                        </when>
+                        <when test="'writer'.equals( searchType )">
+                            AND writer_id = (SELECT mb_id from member WHERE name LIKE CONCAT('%', #{keyword}, '%') LIMIT 1)
+                        </when>
+                    </choose>
+                </when>
+
+                <!-- 전체 검색일 때 -->
+                <otherwise>
+                    AND (
+                           title LIKE CONCAT('%', #{keyword}, '%')
+                        OR content LIKE CONCAT('%', #{keyword}, '%')
+                        OR writer_id = (SELECT mb_id from member WHERE name LIKE CONCAT('%', #{keyword}, '%') LIMIT 1)
+                    )
+                </otherwise>
+            </choose>
+        </if>
+    </sql>
+<!--    ==========================================================================-->
+
+    <!-- 게시글 리스트 조회 -->
+<!--    <select id="findAll" parameterType="com.dk.board_book.common.dto.SearchDto" resultType="com.dk.board_book.domain.post.PostResponse">-->
+<!--        SELECT-->
+<!--            <include refid="postColumns2" />-->
+<!--           , a.writer as writerId-->
+<!--           , b.name as writerName-->
+<!--        FROM-->
+<!--            board a-->
+<!--        LEFT JOIN-->
+<!--            member b-->
+<!--          ON a.writer = b.mb_id-->
+<!--        WHERE-->
+<!--            a.delete_yn = 0-->
+<!--            <include refid="search" />-->
+<!--        ORDER BY-->
+<!--            a.board_id DESC-->
+<!--        LIMIT #{pagination.limitStart}, #{recordSize}-->
+<!--</select>-->
+<!--    ======================================================================-->
+    <select id="findAll" parameterType="com.dk.board_book.common.dto.SearchDto" resultType="com.dk.board_book.domain.post.PostResponse">
+        SELECT
+            <include refid="postColumns2" />
+           , b.name as writerName
+        FROM
+            board a
+        LEFT JOIN
+            member b
+          ON a.writer_id = b.mb_id
+        WHERE
+            a.delete_yn = 0
+            <include refid="search" />
+        ORDER BY
+            a.board_id DESC
+        LIMIT #{pagination.limitStart}, #{recordSize}
+</select>
+
+    <!-- 게시글 수 카운팅 -->
+    <select id="count" parameterType="com.dk.board_book.common.dto.SearchDto" resultType="int">
+        SELECT COUNT(*)
+        FROM board
+        WHERE delete_yn = 0
+              <include refid="search" />
+    </select>
+
+    <!-- 게시글 조회수 1증가 -->
+    <update id="addViewCount" parameterType="long">
+
+        UPDATE board
+        SET
+          view_cnt = view_cnt + 1
+        WHERE
+        board_id = #{boardId}
+    </update>
+
+</mapper>

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title>Error Page</title>
+
+    <script th:inline="javascript">
+
+        /*<![CDATA[*/
+
+        window.onload = function() {
+
+            var message = [[${session.errorMessage}]]; // 세션에서 ==>> 에러 메시지를 가져옴
+
+            if (message) {
+
+                alert(message);
+
+                window.history.back(); // 이전 페이지로 돌아감
+            }
+        };
+        /*]]>*/
+    </script>
+</head>
+
+<body>
+    <p>Redirecting...</p>
+</body>
+</html>

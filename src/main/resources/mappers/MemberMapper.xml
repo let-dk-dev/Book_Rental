@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dk.board_book.domain.member.MemberMapper">
+
+    <!-- tb_member 테이블 전체 컬럼 -->
+    <sql id="memberColumns">
+          mb_id
+        , login_id
+        , password
+        , name
+        , gender
+        , birthday
+        , phone
+        , delete_yn
+        , main_address
+        , detail_address
+        , extra_address
+        , member_type
+        , created_date
+        , modified_date
+    </sql>
+
+
+    <!-- 회원 정보 저장 (회원가입) -->
+    <insert id="save" parameterType="com.dk.board_book.domain.member.MemberRequest" useGeneratedKeys="true" keyProperty="mbId">
+        INSERT INTO member (
+            <include refid="memberColumns" />
+        ) VALUES (
+              #{mbId}
+            , #{loginId}
+            , #{password}
+            , #{name}
+            , #{gender}
+            , #{birthday}
+            , #{phone}
+            , 0
+            , #{mainAddress}    /* 메인 주소 */
+            , #{detailAddress}  /* 디테일 주소 */
+            , #{extraAddress}   /* 엑스트라 주소 */
+            , 0     /* member type */
+            , NOW()
+            , NULL
+        )
+    </insert>
+
+
+    <!-- 회원 상세정보 조회 -->
+    <select id="findByLoginId" parameterType="string" resultType="com.dk.board_book.domain.member.MemberResponse">
+        SELECT
+            <include refid="memberColumns" />
+        FROM
+            member
+        WHERE
+            delete_yn = 0
+            AND login_id = #{value}
+    </select>
+
+    <!-- 회원 상세정보 조회 -->
+    <select id="findBymbId" parameterType="string" resultType="com.dk.board_book.domain.member.MemberResponse">
+        SELECT
+            <include refid="memberColumns" />
+        FROM
+            member
+        WHERE
+            mb_id = #{value}
+    </select>
+
+
+    <!-- 회원 정보 수정 -->
+    <update id="update" parameterType="com.dk.board_book.domain.member.MemberRequest">
+        UPDATE member
+        SET
+              modified_date = NOW()
+            , name = #{name}
+            , gender = #{gender}
+            , birthday = #{birthday}
+            , phone = #{phone}
+            <if test="password != null and password != ''">
+            , password = #{password}
+            </if>
+            , main_address = #{mainAddress}
+            , detail_address = #{detailAddress}
+            , extra_address = #{extraAddress}
+        WHERE
+            mb_id = #{mbId}
+    </update>
+
+
+    <!-- 회원 정보 삭제 (회원 탈퇴) -->
+    <delete id="deleteById" parameterType="long">
+        UPDATE member
+        SET
+            delete_yn = 1
+        WHERE
+            mb_id = #{mbId}
+    </delete>
+
+
+    <!-- 회원 수 카운팅 (ID 중복 체크) -->
+    <select id="countByLoginId" parameterType="string" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM
+            member
+        WHERE
+            login_id = #{value}
+    </select>
+<!--    ========================================================================-->
+
+    <!-- 회원 검색 -->
+    <sql id="search">
+        <!-- 검색 키워드가 있을 때 -->
+        <if test="keyword != null and keyword != ''">
+            <choose>
+                <!-- 검색 유형이 있을 때 -->
+                <when test="searchType != null and searchType != ''">
+                    <choose>
+                        <when test="'name'.equals( searchType )">
+                            AND name LIKE CONCAT('%', #{keyword}, '%')
+                        </when>
+                        <when test="'phone'.equals( searchType )">
+                            AND phone LIKE CONCAT('%', #{keyword}, '%')
+                        </when>
+                        <when test="'mainAddress'.equals( searchType )">  <!-- tts -->
+                            AND(
+                                main_address LIKE CONCAT('%', #{keyword}, '%') OR
+                                detail_address LIKE CONCAT('%', #{keyword}, '%') OR
+                                extra_address LIKE CONCAT('%', #{keyword}, '%')
+                            )
+                        </when>
+                    </choose>
+                </when>
+
+                <!-- 전체 검색일 때 -->
+                <otherwise>
+                    AND (
+                           name LIKE CONCAT('%', #{keyword}, '%')
+                        OR phone LIKE CONCAT('%', #{keyword}, '%')
+                        OR (
+                                main_address LIKE CONCAT('%', #{keyword}, '%') OR
+                                detail_address LIKE CONCAT('%', #{keyword}, '%') OR
+                                extra_address LIKE CONCAT('%', #{keyword}, '%')
+                            )
+                    )
+                </otherwise>
+            </choose>
+        </if>
+    </sql>
+
+    <!-- 멤버 수 카운팅(couning) -->
+    <select id="count" parameterType="com.dk.board_book.common.dto.SearchDto" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM
+            member
+        WHERE
+            delete_yn = 0
+            <include refid="search" />
+    </select>
+
+
+    <!-- 회원 멤버 list -->
+    <select id="findAll" parameterType="com.dk.board_book.common.dto.SearchDto" resultType="com.dk.board_book.domain.member.MemberResponse">
+        SELECT
+            <include refid="memberColumns" />
+        FROM
+            member
+        WHERE
+            delete_yn = 0
+            <include refid="search" />
+        ORDER BY
+            mb_id DESC
+        LIMIT #{pagination.limitStart}, #{recordSize}
+    </select>
+
+
+</mapper>
+
